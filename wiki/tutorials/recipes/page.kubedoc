@@ -270,6 +270,126 @@ event.replaceInput(
 
 # Advanced Techniques
 
+## Ingredient and Output specifications
+
+|> 1.21+
+### 
+
+Do you want to require a tool being processed only if it has full durability? Do you want to output a named sword?
+This is stored as components! Here's an example of how to use it.
+
+
+```js
+ServerEvents.recipes(event => {
+
+  // Crafting a sword with full durability with a stone block makes a melee stone (that attacks you, or something)
+  event.shapeless(
+    'kubejs:melee_stone',
+    [
+      'minecraft:stone',
+      'minecraft:diamond_sword[damage=0]'
+    ]
+  )
+
+  // Making a named diorite sword
+  event.shaped(
+    'kubejs:diorite_sword[custom_name="The Ugliest Sword to Ever Sword"]',
+    [
+      'M',
+      'M',
+      'S'
+    ],
+    {
+      M: 'minecraft:diorite',
+      S: 'minecraft:stick'
+    }
+  )
+})
+```
+<||> 1.20.x and below
+### NBT data
+
+Do you want to require a tool being processed only if it has full durability? Do you want to output a named sword?
+This is stored as NBT data! Here's an example of how to use it.
+
+```js
+ServerEvents.recipes(event => {
+
+  // Crafting a sword with full durability with a stone block makes a melee stone (that attacks you, or something)
+  event.shapeless(
+    'kubejs:melee_stone',
+    [
+      'minecraft:stone',
+      Item.of('minecraft:diamond_sword', "{Damage:0}").weakNBT() // .weakNBT() allows for other NBT tags to exist besides the ones required - as opposed to .strongNBT() which requires an exact match
+    ]
+  )
+
+  // Making a named diorite sword
+  event.shaped(
+    Item.of('kubejs:diorite_sword', "display:{Name:'{\"text\":\"The Ugliest Sword to Ever Sword\"}'}"),
+    [
+      'M',
+      'M',
+      'S'
+    ],
+    {
+      M: 'minecraft:diorite',
+      S: 'minecraft:stick'
+    }
+  )
+})
+```
+<|
+
+### Enchantments
+
+|> 1.21+
+
+```js
+ServerEvents.recipes(event => {
+
+  // Making an enchanted diamond sword
+  event.shaped(
+    'minecraft:diamond_sword[enchantments={levels:{"minecraft:mending":1,"minecraft:sharpness":5,"minecraft:knockback":2,"minecraft:sweeping_edge":3,"minecraft:unbreaking":3}}]',
+    [
+      ' M ',
+      'LML',
+      ' S '
+    ],
+    {
+      M: 'minecraft:diamond',
+      S: 'minecraft:stick',
+      L: 'minecraft:lapis_lazuli'
+    }
+  )
+})
+```
+
+<||> 1.20.x and below
+
+
+```js
+ServerEvents.recipes(event => {
+
+  // Making an enchanted diamond sword
+  event.shaped(
+    Item.of('minecraft:diamond_sword').enchant('minecraft:mending', 1).enchant('minecraft:sharpness', 5).enchant('minecraft:knockback', 2).enchant('minecraft:sweeping_edge', 3).enchant('minecraft:unbreaking', 3),
+    [
+      ' M ',
+      'LML',
+      ' S '
+    ],
+    {
+      M: 'minecraft:diamond',
+      S: 'minecraft:stick',
+      L: 'minecraft:lapis_lazuli'
+    }
+  )
+})
+```
+
+<|
+
 ## Helper functions
 
 Are you making a lot of similar recipes? Feel like you're typing the same text over and over? Try helper functions! Helper functions will perform repeated actions in much less space by taking in only the parts that are relevant, then doing the repetitive stuff for you!
@@ -277,6 +397,8 @@ Here's a helper function, which allows you to make items by crafting a flower po
 
 ```js
 ServerEvents.recipes(event => {
+
+  // Define the helper function
   function potting(output, pottedInput) {
     event.shaped(output, [
       'BIB',
@@ -287,7 +409,7 @@ ServerEvents.recipes(event => {
     })
   }
 
-  //Now we can make many 'potting' recipes without typing that huge block over and over!
+  // Now we can make many 'potting' recipes without typing that huge block over and over!
   potting('kubejs:potted_snowball', 'minecraft:snowball')
   potting('kubejs:potted_lava', 'minecraft:lava_bucket')
   potting('minecraft:blast_furnace', 'minecraft:furnace')
@@ -297,3 +419,45 @@ ServerEvents.recipes(event => {
 ## Looping
 
 In addition to helper functions, you can also loop through an array to perform an action on every item in the array.
+Here's an example for creating similar recipes for different ways of hammering a block:
+
+```js
+ServerEvents.recipes(event => {
+
+  // Define the array 
+  let crushed_recipes = [
+    {output: 'minecraft:gravel', crushedInput: '#minecraft:stone_tool_materials'},
+    {output: 'minecraft:sand',   crushedInput: 'minecraft:gravel'},
+    {output: 'exdeorum:dust',    crushedInput: 'minecraft:sand'}
+  ]
+
+  // Now do something with all of them at once!
+  crushed_recipes.forEach(recipe => {
+    // add a hammer crafting recipe
+    event.shapeless(
+      recipe.output,
+      [
+        '#exdeorum:hammers',
+        recipe.crushedInput
+      ]
+    ).damageIngredient('#exdeorum:hammers')
+
+    // add another hammer crafting recipe
+    event.shapeless(
+      recipe.output,
+      [
+        '#immersiveengineering:toolbox/tools',
+        recipe.crushedInput
+      ]
+    ).damageIngredient('#alltheores:ore_hammers')
+
+    // add the in-world hammering recipe from Ex Deorum
+    event.custom({
+      type: 'exdeorum:hammer',
+      ingredient: crushedInput,
+      result: output,
+      result_amount: 1.0
+    })
+  })
+})
+```
